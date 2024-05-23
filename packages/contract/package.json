@@ -2,6 +2,11 @@
   "name": "contract",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "run:script":"npx hardhat run scripts/run.js",
+    "deploy": "npx hardhat run scripts/deploy.js --network amoy",
+    "test": "npx hardhat test"
+  },
   "devDependencies": {
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
@@ -18,5 +23,8 @@
     "hardhat-gas-reporter": "^1.0.9",
     "solidity-coverage": "^0.8.2",
     "typechain": "^8.2.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "4.8.2"
   }
 }
