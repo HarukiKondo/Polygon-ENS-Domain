@@ -2,6 +2,9 @@ import React, { useEffect } from 'react';
 import './styles/App.css';
 import twitterLogo from './assets/twitter-logo.svg';
 import contractAbi from './utils/contractABI.json';
+import polygonLogo from './assets/polygonlogo.png';
+import ethLogo from './assets/ethlogo.png';
+import { networks } from './utils/networks';
 
 // 定数
 const TWITTER_HANDLE = 'UNCHAIN_tech';
@@ -15,6 +18,7 @@ const App = () => {
   // state管理するプロパティを追加しています。
   const [domain, setDomain] = useState('');
   const [record, setRecord] = useState('');
+  const [network, setNetwork] = useState('');
 
   // connectWallet 関数を定義
   const connectWallet = async () => {
@@ -39,16 +43,77 @@ const App = () => {
     }
   };
 
-  // ウォレットの接続を確認します。
-  const checkIfWalletIsConnected = () => {
-    // window.ethereumの設定。この表記法はJavascriptの「分割代入」を参照。
+  const switchNetwork = async () => {
+    if (window.ethereum) {
+      try {
+        // Amoy testnet に切り替えます。
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0x13882' }], // utilsフォルダ内のnetworks.js を確認しましょう。0xは16進数です。
+        });
+      } catch (error) {
+        // このエラーコードは当該チェーンがメタマスクに追加されていない場合です。
+        // その場合、ユーザーに追加するよう促します。
+        if (error.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [
+                {
+                  chainId: '0x13882',
+                  chainName: 'Polygon Amoy Testnet',
+                  rpcUrls: ['https://rpc-amoy.maticvigil.com/'],
+                  nativeCurrency: {
+                      name: 'Amoy Matic',
+                      symbol: 'MATIC',
+                      decimals: 18
+                  },
+                  blockExplorerUrls: ['https://amoy.polygonscan.com/']
+                },
+              ],
+            });
+          } catch (error) {
+            console.log(error);
+          }
+        }
+        console.log(error);
+      }
+    } else {
+      // window.ethereum が見つからない場合メタマスクのインストールを促します。
+      alert('MetaMask is not installed. Please install it to use this app: https://metamask.io/download.html');
+    }
+  }
+
+  // network を扱えるよう checkIfWalletIsConnected 関数をupdateします。
+  const checkIfWalletIsConnected = async () => {
     const { ethereum } = window;
 
     if (!ethereum) {
-      console.log('Make sure you have MetaMask!');
+      console.log('Make sure you have metamask!');
       return;
     } else {
       console.log('We have the ethereum object', ethereum);
+    }
+
+    const accounts = await ethereum.request({ method: 'eth_accounts' });
+
+    if (accounts.length !== 0) {
+      const account = accounts[0];
+      console.log('Found an authorized account:', account);
+      setCurrentAccount(account);
+    } else {
+      console.log('No authorized account found');
+    }
+
+    // ユーザーのネットワークのチェーンIDをチェックします。
+    const chainId = await ethereum.request({ method: 'eth_chainId' });
+    setNetwork(networks[chainId]);
+
+    ethereum.on('chainChanged', handleChainChanged);
+
+    // ネットワークが変わったらリロードします。
+    function handleChainChanged(_chainId) {
+      window.location.reload();
     }
   };
 
@@ -126,6 +191,15 @@ const App = () => {
   );
 
   const renderInputForm = () => {
+    // テストネットの Polygon Amoy 上にいない場合の処理
+    if (network !== 'Polygon Amoy Testnet') {
+      return (
+        <div className="connect-wallet-container">
+          <p>Please connect to the Polygon Amoy Testnet</p>
+        </div>
+      );
+    }
+
     return (
       <div className="form-container">
         <div className="first-row">
@@ -163,14 +237,19 @@ const App = () => {
   return (
     <div className="App">
       <div className="container">
-        <div className="header-container">
-          <header>
-            <div className="left">
-              <p className="title">🐱‍👤 Ninja Name Service</p>
-              <p className="subtitle">Your immortal API on the blockchain!</p>
-            </div>
-          </header>
-        </div>
+      <div className="header-container">
+        <header>
+          <div className="left">
+            <p className="title">🐱‍👤 Ninja Name Service</p>
+            <p className="subtitle">Your immortal API on the blockchain!</p>
+          </div>
+          {/* Display a logo and wallet connection status*/}
+          <div className="right">
+            <img alt="Network logo" className="logo" src={ network.includes('Polygon') ? polygonLogo : ethLogo} />
+            { currentAccount ? <p> Wallet: {currentAccount.slice(0, 6)}...{currentAccount.slice(-4)} </p> : <p> Not connected </p> }
+          </div>
+        </header>
+      </div>
 
         {/* currentAccount が存在しない場合、Connect Wallet ボタンを表示します*/}
         {!currentAccount && renderNotConnectedContainer()}
