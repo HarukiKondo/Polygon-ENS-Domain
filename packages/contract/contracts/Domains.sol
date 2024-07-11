@@ -12,6 +12,9 @@ contract Domains is ERC721URIStorage {
 　// OpenZeppelinによりtokenIdsの追跡が容易になります。
   using Counters for Counters.Counter;
   Counters.Counter private _tokenIds;
+
+  // コントラクトのownerを保有する変数
+  address payable public owner;
   // トップレベルドメイン(TLD)です。
 　string public tld;
 
@@ -24,8 +27,15 @@ contract Domains is ERC721URIStorage {
   mapping(string => address) public domains;
   // stringとstringを紐付けた新しいmappingです。
   mapping(string => string) public records;
+
+  // 修飾子
+  modifier onlyOwner() {
+      require(isOwner(), "You aren't the owner");
+      _;
+  }
   
   constructor(string memory _tld) payable ERC721("Ninja Name Service", "NNS") {
+      owner = payable(msg.sender);
     　tld = _tld;
       console.log("%s name service deployed", _tld);
   }
@@ -132,5 +142,16 @@ contract Domains is ERC721URIStorage {
       string calldata name
   ) public view returns (string memory) {
       return records[name];
+  }
+
+  function isOwner() public view returns (bool) {
+    return msg.sender == owner;
+  }
+
+  function withdraw() public onlyOwner {
+      uint amount = address(this).balance;
+  
+      (bool success, ) = msg.sender.call{value: amount}("");
+      require(success, "Failed to withdraw Matic");
   }
 }
